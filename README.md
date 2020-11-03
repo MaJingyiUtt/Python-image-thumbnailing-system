@@ -15,3 +15,4 @@ API
 | GET | /images/<id> |  describe image processing state (pending, success, failure) metadata and links to thumbnail  |
 | GET | /thumbnails/<id>.jpg | a way to read the generated thumbnail |
 
+
