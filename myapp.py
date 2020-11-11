@@ -13,9 +13,6 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['THUMBNAIL_FOLDER'] = THUMBNAIL_FOLDER
 
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/images', methods=['POST'])
 def upload_image():
@@ -40,6 +37,10 @@ def upload_image():
 @app.route('/thumbnails/<idfilename>', methods=['GET'])
 def uploaded_file(idfilename):
     return send_from_directory(app.config['THUMBNAIL_FOLDER'],idfilename)
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def generate_id():
     return str(uuid.uuid4())
