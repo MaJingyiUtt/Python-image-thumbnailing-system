@@ -1,8 +1,10 @@
 import os
-from flask import Flask, request,send_from_directory
+from flask import Flask, request,send_from_directory,jsonify
 from werkzeug.utils import secure_filename
 from PIL import Image
 import uuid
+import json
+import sqlite3
 
 UPLOAD_FOLDER = './uploads'
 THUMBNAIL_FOLDER = './thumbnails'
@@ -16,27 +18,51 @@ app.config['THUMBNAIL_FOLDER'] = THUMBNAIL_FOLDER
 
 @app.route('/images', methods=['POST'])
 def upload_image():
-    if request.method=="POST":
+    id = generate_id()
+    state="failure"
+    if request.files :
+        image = request.files['image']
+        if image.filename!='' and allowed_file(image.filename):
+            state="pending"
+            create_thumbnail(image,id)
+    saveStateToBdd(id,state)
+    return id+"\n"
 
-        if request.files :
-
-            image = request.files['image']
-
-            if image.filename=='':
-                return 'Image must have a filename\n'
-                
-            if not allowed_file(image.filename):
-                return "Only "+str(ALLOWED_EXTENSIONS)+" extensions are allowed\n"
-            else:
-                filename = secure_filename(image.filename)
-                image.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
-                id = generate_id()
-                create_thumbnail(image,id)
-                return filename+" and its thumbnail "+id+".jpg are saved ! \n"
+@app.route('/images/<id>', methods=['GET'])
+def see_image_info(id):
+    conn=sqlite3.connect("images.db")
+    c=conn.cursor()
+    result=c.execute("SELECT * FROM images WHERE id=?",[id])
+    jsondata=[]
+    for obj in result:
+        jsondata.append(obj)
+    conn.close()
+    return jsonify(jsondata)
 
 @app.route('/thumbnails/<idfilename>', methods=['GET'])
 def uploaded_file(idfilename):
     return send_from_directory(app.config['THUMBNAIL_FOLDER'],idfilename)
+
+def saveStateToBdd(id,state):
+    conn=sqlite3.connect("images.db")
+    c=conn.cursor()
+    tab=[id,state,""]
+    c.execute("INSERT INTO images VALUES (?,?,?)",tab)
+    conn.commit()
+    for row in c.execute('SELECT * FROM images'):
+        print(row)
+    conn.close()
+
+def saveMetadataToBdd(id):
+    conn=sqlite3.connect("images.db")
+    c=conn.cursor()
+    link="/thumbnails/"+id+".jpg"
+    tab=["success",link,id]
+    c.execute("UPDATE images SET state = ? AND link = ? WHERE id = ?",tab)
+    conn.commit()
+    for row in c.execute('SELECT * FROM images'):
+        print(row)
+    conn.close()
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -50,3 +76,6 @@ def create_thumbnail(image,id):
     im = Image.open(image).convert('RGB')
     im.thumbnail(size)
     im.save(os.path.join(app.config['THUMBNAIL_FOLDER'],id+".jpg"))
+    saveMetadataToBdd(id)
+
+
