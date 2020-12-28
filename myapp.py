@@ -10,7 +10,7 @@ import sqlite3
 UPLOAD_FOLDER = './uploads'
 THUMBNAIL_FOLDER = './thumbnails'
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg'}
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -33,6 +33,17 @@ def upload_image():
         change_state_in_bdd(id,"failure")
     return id+"\n"
 
+@app.route('/images-all', methods=['GET'])
+def see_all_image_info():
+    conn=sqlite3.connect("images.db")
+    c=conn.cursor()
+    result=c.execute("SELECT * FROM images")
+    jsondata=[]
+    for obj in result:
+        jsondata.append(obj)
+    conn.close()
+    return jsonify(jsondata)
+
 @app.route('/images/<id>', methods=['GET'])
 def see_image_info(id):
     conn=sqlite3.connect("images.db")
@@ -54,8 +65,6 @@ def save_to_bdd(id):
     tab=[id,"pending","",""]
     c.execute("INSERT INTO images VALUES (?,?,?,?)",tab)
     conn.commit()
-    # for row in c.execute('SELECT * FROM images'):
-    #     print(row)
     conn.close()
     
 def change_state_in_bdd(id,state):
@@ -74,6 +83,7 @@ def generate_id():
     return str(uuid.uuid4())
 
 def create_thumbnail(image,id):
+    print("create thumbnail")
     size = 128, 128
     im = Image.open(image).convert('RGB')
     im.thumbnail(size)
@@ -81,11 +91,12 @@ def create_thumbnail(image,id):
     save_link_to_bdd(id)
 
 def save_link_to_bdd(id):
+    print("link to bdd")
     conn=sqlite3.connect("images.db")
     c=conn.cursor()
     link="/thumbnails/"+id+".jpg"
-    tab=["success",link,id]
-    c.execute("UPDATE images SET state = ? AND link = ? WHERE id = ?",tab)
+    tab=[link,id]
+    c.execute("UPDATE images SET link = ? WHERE id = ?",tab)
     conn.commit()
     conn.close()
 

@@ -12,6 +12,7 @@ API
 | Method | Route| Description |
 | :------------ | :-------------: | -------------: |
 | POST | /images | upload a new image, responds an image ID |
+| GET | /images-all |  list all images with their informations|
 | GET | /images/<id> |  describe image processing state (pending, success, failure) metadata and links to thumbnail  |
 | GET | /thumbnails/<id>.jpg | a way to read the generated thumbnail |
 
