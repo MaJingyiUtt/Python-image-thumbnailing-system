@@ -2,6 +2,7 @@ import os
 from flask import Flask, request,send_from_directory,jsonify
 from werkzeug.utils import secure_filename
 from PIL import Image
+from PIL.ExifTags import TAGS
 import uuid
 import json
 import sqlite3
@@ -19,13 +20,17 @@ app.config['THUMBNAIL_FOLDER'] = THUMBNAIL_FOLDER
 @app.route('/images', methods=['POST'])
 def upload_image():
     id = generate_id()
-    state="failure"
+    save_to_bdd(id)
     if request.files :
         image = request.files['image']
         if image.filename!='' and allowed_file(image.filename):
-            state="pending"
             create_thumbnail(image,id)
-    saveStateToBdd(id,state)
+            generate_metadata(image,id)
+            change_state_in_bdd(id,"success")
+        else:
+            change_state_in_bdd(id,"failure")
+    else:
+        change_state_in_bdd(id,"failure")
     return id+"\n"
 
 @app.route('/images/<id>', methods=['GET'])
@@ -43,25 +48,22 @@ def see_image_info(id):
 def uploaded_file(idfilename):
     return send_from_directory(app.config['THUMBNAIL_FOLDER'],idfilename)
 
-def saveStateToBdd(id,state):
+def save_to_bdd(id):
     conn=sqlite3.connect("images.db")
     c=conn.cursor()
-    tab=[id,state,""]
-    c.execute("INSERT INTO images VALUES (?,?,?)",tab)
+    tab=[id,"pending","",""]
+    c.execute("INSERT INTO images VALUES (?,?,?,?)",tab)
     conn.commit()
-    for row in c.execute('SELECT * FROM images'):
-        print(row)
+    # for row in c.execute('SELECT * FROM images'):
+    #     print(row)
     conn.close()
-
-def saveMetadataToBdd(id):
+    
+def change_state_in_bdd(id,state):
     conn=sqlite3.connect("images.db")
     c=conn.cursor()
-    link="/thumbnails/"+id+".jpg"
-    tab=["success",link,id]
-    c.execute("UPDATE images SET state = ? AND link = ? WHERE id = ?",tab)
+    tab=[state,id]
+    c.execute("UPDATE images SET state = ? WHERE id = ?",tab)
     conn.commit()
-    for row in c.execute('SELECT * FROM images'):
-        print(row)
     conn.close()
 
 def allowed_file(filename):
@@ -76,6 +78,37 @@ def create_thumbnail(image,id):
     im = Image.open(image).convert('RGB')
     im.thumbnail(size)
     im.save(os.path.join(app.config['THUMBNAIL_FOLDER'],id+".jpg"))
-    saveMetadataToBdd(id)
+    save_link_to_bdd(id)
+
+def save_link_to_bdd(id):
+    conn=sqlite3.connect("images.db")
+    c=conn.cursor()
+    link="/thumbnails/"+id+".jpg"
+    tab=["success",link,id]
+    c.execute("UPDATE images SET state = ? AND link = ? WHERE id = ?",tab)
+    conn.commit()
+    conn.close()
 
 
+def save_metadata_to_bdd(metadata, id):
+    conn=sqlite3.connect("images.db")
+    c=conn.cursor()
+    tab=[metadata,id]
+    c.execute("UPDATE images SET metadata= ? WHERE id = ?",tab)
+    conn.commit()
+    conn.close()
+
+def generate_metadata(image,id):
+    im = Image.open(image)
+    exifdata = im.getexif()
+    metadata=""
+    # iterating over all EXIF data fields
+    for tag_id in exifdata:
+        # get the tag name, instead of human unreadable tag id
+        tag = TAGS.get(tag_id, tag_id)
+        data = exifdata.get(tag_id)
+        # decode bytes 
+        if isinstance(data, bytes):
+            data = data.decode()
+        metadata+=f"{tag}: {data},"
+    save_metadata_to_bdd(metadata,id)
