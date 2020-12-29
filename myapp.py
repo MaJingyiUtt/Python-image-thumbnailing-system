@@ -11,10 +11,14 @@ UPLOAD_FOLDER = './uploads'
 THUMBNAIL_FOLDER = './thumbnails'
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg'}
+THUMBNAIL_WIDTH=128
+THUMBNAIL_HEIGHT=128
+
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['THUMBNAIL_FOLDER'] = THUMBNAIL_FOLDER
+
 
 
 @app.route('/images', methods=['POST'])
@@ -24,8 +28,10 @@ def upload_image():
     if request.files :
         image = request.files['image']
         if image.filename!='' and allowed_file(image.filename):
-            generate_metadata(image,id)
+            metadata=generate_metadata(image)
+            save_metadata_to_bdd(metadata,id)
             create_thumbnail(image,id)
+            save_link_to_bdd(id)
             change_state_in_bdd(id,"success")
         else:
             change_state_in_bdd(id,"failure")
@@ -83,7 +89,6 @@ def change_state_in_bdd(id,state):
     conn.close()
 
 def save_link_to_bdd(id):
-    print("link to bdd")
     conn=sqlite3.connect("images.db")
     c=conn.cursor()
     link="/thumbnails/"+id+".jpg"
@@ -101,14 +106,12 @@ def save_metadata_to_bdd(metadata, id):
     conn.close()
 
 def create_thumbnail(image,id):
-    print("create thumbnail")
-    size = 128, 128
+    size = THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
     im = Image.open(image).convert('RGB')
     im.thumbnail(size)
     im.save(os.path.join(app.config['THUMBNAIL_FOLDER'],id+".jpg"))
-    save_link_to_bdd(id)
 
-def generate_metadata(image,id):
+def generate_metadata(image):
     im = Image.open(image)
     exifdata = im.getexif()
     metadata=""
@@ -121,4 +124,4 @@ def generate_metadata(image,id):
         if isinstance(data, bytes):
             data = data.decode()
         metadata+=f"{tag}: {data},"
-    save_metadata_to_bdd(metadata,id)
+    return metadata

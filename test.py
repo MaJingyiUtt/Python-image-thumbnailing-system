@@ -1,7 +1,10 @@
+
+import os
 import unittest
 import myapp
 
 import sqlite3
+from PIL import Image
 
 class TestMethods(unittest.TestCase):
     @staticmethod
@@ -27,7 +30,6 @@ class TestMethods(unittest.TestCase):
         self.assertFalse(myapp.allowed_file("filename.png"))
     
     def test_generate_id(self):
-        # self.assertNotEqual(len(myapp.generate_id()),0)
         self.assertIsNotNone(myapp.generate_id)
 
     def test_save_to_bdd(self):
@@ -41,7 +43,6 @@ class TestMethods(unittest.TestCase):
         for obj in result:
             jsondata.append(obj)
         conn.close()
-        print(jsondata[0][1])
         self.assertEqual(jsondata[0][1],"pending")
         self.delete_line_in_bdd(id)
     
@@ -57,7 +58,6 @@ class TestMethods(unittest.TestCase):
         for obj in result:
             jsondata.append(obj)
         conn.close()
-        print(jsondata)
         self.assertEqual(jsondata[0][1],"success")
         self.delete_line_in_bdd(id)
     
@@ -73,7 +73,6 @@ class TestMethods(unittest.TestCase):
         for obj in result:
             jsondata.append(obj)
         conn.close()
-        print(jsondata)
         self.assertEqual(jsondata[0][2],"/thumbnails/"+id+".jpg")
         self.delete_line_in_bdd(id)
 
@@ -89,7 +88,21 @@ class TestMethods(unittest.TestCase):
         for obj in result:
             jsondata.append(obj)
         conn.close()
-        print(jsondata)
         self.assertEqual(jsondata[0][3],"metadata_for_test")
         self.delete_line_in_bdd(id)
     
+    def test_create_thumbnail(self):
+        id="id_for_test_5"
+        myapp.create_thumbnail("test.jpg",id)
+        image_path=os.path.join(myapp.app.config['THUMBNAIL_FOLDER'],id+".jpg")
+        image=Image.open(image_path)
+        print(image.size)
+        width,height=image.size
+        self.assertLessEqual(width,myapp.THUMBNAIL_WIDTH)
+        self.assertLessEqual(height,myapp.THUMBNAIL_HEIGHT)
+        os.remove(image_path)
+
+
+    def test_generate_metadata(self):
+        result=myapp.generate_metadata("test.jpg")
+        self.assertIsNotNone(result)
