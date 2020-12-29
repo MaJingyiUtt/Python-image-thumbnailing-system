@@ -22,4 +22,5 @@ Installation
 ------------
 * Install flask ```$ pip install flask```
 * Install Pillow ```$ python3 -m pip install --upgrade Pillow```
+* Install Pytest ```$ pip3 install -U pytest"```
 * Start the application with ```$ FLASK_APP=myapp.py flask run```

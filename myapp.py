@@ -24,8 +24,8 @@ def upload_image():
     if request.files :
         image = request.files['image']
         if image.filename!='' and allowed_file(image.filename):
-            create_thumbnail(image,id)
             generate_metadata(image,id)
+            create_thumbnail(image,id)
             change_state_in_bdd(id,"success")
         else:
             change_state_in_bdd(id,"failure")
@@ -59,6 +59,13 @@ def see_image_info(id):
 def uploaded_file(idfilename):
     return send_from_directory(app.config['THUMBNAIL_FOLDER'],idfilename)
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def generate_id():
+    return str(uuid.uuid4())
+
 def save_to_bdd(id):
     conn=sqlite3.connect("images.db")
     c=conn.cursor()
@@ -75,21 +82,6 @@ def change_state_in_bdd(id,state):
     conn.commit()
     conn.close()
 
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def generate_id():
-    return str(uuid.uuid4())
-
-def create_thumbnail(image,id):
-    print("create thumbnail")
-    size = 128, 128
-    im = Image.open(image).convert('RGB')
-    im.thumbnail(size)
-    im.save(os.path.join(app.config['THUMBNAIL_FOLDER'],id+".jpg"))
-    save_link_to_bdd(id)
-
 def save_link_to_bdd(id):
     print("link to bdd")
     conn=sqlite3.connect("images.db")
@@ -100,7 +92,6 @@ def save_link_to_bdd(id):
     conn.commit()
     conn.close()
 
-
 def save_metadata_to_bdd(metadata, id):
     conn=sqlite3.connect("images.db")
     c=conn.cursor()
@@ -108,6 +99,14 @@ def save_metadata_to_bdd(metadata, id):
     c.execute("UPDATE images SET metadata= ? WHERE id = ?",tab)
     conn.commit()
     conn.close()
+
+def create_thumbnail(image,id):
+    print("create thumbnail")
+    size = 128, 128
+    im = Image.open(image).convert('RGB')
+    im.thumbnail(size)
+    im.save(os.path.join(app.config['THUMBNAIL_FOLDER'],id+".jpg"))
+    save_link_to_bdd(id)
 
 def generate_metadata(image,id):
     im = Image.open(image)
