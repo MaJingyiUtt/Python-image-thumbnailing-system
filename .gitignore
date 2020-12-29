@@ -1,4 +1,6 @@
 my.txt
 __pycache__/myapp.cpython-38.pyc
 __pycache__/myapp.cpython-39.pyc
+__pycache__/test.cpython-39-pytest-6.2.1.pyc
+
 images.db

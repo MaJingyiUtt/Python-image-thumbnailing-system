@@ -100,7 +100,8 @@ class TestMethods(unittest.TestCase):
         width,height=image.size
         self.assertLessEqual(width,myapp.THUMBNAIL_WIDTH)
         self.assertLessEqual(height,myapp.THUMBNAIL_HEIGHT)
-        os.remove(image_path)
+        if os.path.exists(image_path):
+            os.remove(image_path)
 
 
     def test_generate_metadata(self):
