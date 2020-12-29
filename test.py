@@ -96,7 +96,6 @@ class TestMethods(unittest.TestCase):
         myapp.create_thumbnail("test.jpg",id)
         image_path=os.path.join(myapp.app.config['THUMBNAIL_FOLDER'],id+".jpg")
         image=Image.open(image_path)
-        print(image.size)
         width,height=image.size
         self.assertLessEqual(width,myapp.THUMBNAIL_WIDTH)
         self.assertLessEqual(height,myapp.THUMBNAIL_HEIGHT)
@@ -107,3 +106,32 @@ class TestMethods(unittest.TestCase):
     def test_generate_metadata(self):
         result=myapp.generate_metadata("test.jpg")
         self.assertIsNotNone(result)
+
+    def test_images_all(self):
+        with myapp.app.test_client() as c:
+            response = c.get('/images-all',json={})
+            json_data = response.get_json()
+            self.assertEqual(response.status_code,200)
+
+    def test_images_by_id(self):
+        id="id_for_test_6"
+        self.create_line_in_bdd(id)
+        with myapp.app.test_client() as c:
+            response = c.get('/images/'+id)
+            json_data = response.get_json()
+            self.assertEqual(response.status_code,200)
+        self.delete_line_in_bdd(id)
+
+    def test_thumbnails(self):
+        with myapp.app.test_client() as c:
+            response = c.get('/thumbnails/test_thumbnail.jpg')
+            self.assertEqual(response.status_code,200)
+    
+    def test_upload_image(self):
+        image = "test.jpg"
+        data = {
+            'image': (open(image, 'rb'), image)
+        }
+        with myapp.app.test_client() as c:
+            response = c.post('/images',data=data)
+            self.assertEqual(response.status_code,200)
