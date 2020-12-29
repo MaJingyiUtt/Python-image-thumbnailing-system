@@ -1,60 +1,61 @@
+"""This module is the principle module of this flask application """
 import os
+import uuid
+import sqlite3
 from flask import Flask, request,send_from_directory,jsonify
-from werkzeug.utils import secure_filename
 from PIL import Image
 from PIL.ExifTags import TAGS
-import uuid
-import json
-import sqlite3
+
 
 UPLOAD_FOLDER = './uploads'
 THUMBNAIL_FOLDER = './thumbnails'
 
-ALLOWED_EXTENSIONS = {'jpg', 'jpeg'}
+ALLOWED_EXTENSIONS = {'jpg'}
 THUMBNAIL_WIDTH=128
 THUMBNAIL_HEIGHT=128
-
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['THUMBNAIL_FOLDER'] = THUMBNAIL_FOLDER
 
 
-
 @app.route('/images', methods=['POST'])
 def upload_image():
-    id = generate_id()
-    save_to_bdd(id)
+    """upload image and return an id"""
+    image_id = generate_id()
+    save_to_bdd(image_id)
     if request.files :
         image = request.files['image']
         if image.filename!='' and allowed_file(image.filename):
             metadata=generate_metadata(image)
-            save_metadata_to_bdd(metadata,id)
-            create_thumbnail(image,id)
-            save_link_to_bdd(id)
-            change_state_in_bdd(id,"success")
+            save_metadata_to_bdd(metadata,image_id)
+            create_thumbnail(image,image_id)
+            save_link_to_bdd(image_id)
+            change_state_in_bdd(image_id,"success")
         else:
-            change_state_in_bdd(id,"failure")
+            change_state_in_bdd(image_id,"failure")
     else:
-        change_state_in_bdd(id,"failure")
-    return id+"\n"
+        change_state_in_bdd(image_id,"failure")
+    return image_id+"\n"
 
 @app.route('/images-all', methods=['GET'])
 def see_all_image_info():
+    """return all the data of all the images"""
     conn=sqlite3.connect("images.db")
-    c=conn.cursor()
-    result=c.execute("SELECT * FROM images")
+    my_cursor=conn.cursor()
+    result=my_cursor.execute("SELECT * FROM images")
     jsondata=[]
     for obj in result:
         jsondata.append(obj)
     conn.close()
     return jsonify(jsondata)
 
-@app.route('/images/<id>', methods=['GET'])
-def see_image_info(id):
+@app.route('/images/<image_id>', methods=['GET'])
+def see_image_info(image_id):
+    """return the data of one image by id"""
     conn=sqlite3.connect("images.db")
-    c=conn.cursor()
-    result=c.execute("SELECT * FROM images WHERE id=?",[id])
+    my_cursor=conn.cursor()
+    result=my_cursor.execute("SELECT * FROM images WHERE id=?",[image_id])
     jsondata=[]
     for obj in result:
         jsondata.append(obj)
@@ -63,64 +64,75 @@ def see_image_info(id):
 
 @app.route('/thumbnails/<idfilename>', methods=['GET'])
 def uploaded_file(idfilename):
+    """return a thumbnail by id"""
     return send_from_directory(app.config['THUMBNAIL_FOLDER'],idfilename)
 
+
+
 def allowed_file(filename):
+    """check if the file extention is allowed"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def generate_id():
+    """generate the image id"""
     return str(uuid.uuid4())
 
-def save_to_bdd(id):
+def save_to_bdd(image_id):
+    """save id and pending state into the database"""
     conn=sqlite3.connect("images.db")
-    c=conn.cursor()
-    tab=[id,"pending","",""]
-    c.execute("INSERT INTO images VALUES (?,?,?,?)",tab)
-    conn.commit()
-    conn.close()
-    
-def change_state_in_bdd(id,state):
-    conn=sqlite3.connect("images.db")
-    c=conn.cursor()
-    tab=[state,id]
-    c.execute("UPDATE images SET state = ? WHERE id = ?",tab)
+    my_cursor=conn.cursor()
+    tab=[image_id,"pending","",""]
+    my_cursor.execute("INSERT INTO images VALUES (?,?,?,?)",tab)
     conn.commit()
     conn.close()
 
-def save_link_to_bdd(id):
+def change_state_in_bdd(image_id,state):
+    """change the image state to faliure or success by id in the database"""
     conn=sqlite3.connect("images.db")
-    c=conn.cursor()
-    link="/thumbnails/"+id+".jpg"
-    tab=[link,id]
-    c.execute("UPDATE images SET link = ? WHERE id = ?",tab)
+    my_cursor=conn.cursor()
+    tab=[state,image_id]
+    my_cursor.execute("UPDATE images SET state = ? WHERE id = ?",tab)
     conn.commit()
     conn.close()
 
-def save_metadata_to_bdd(metadata, id):
+def save_link_to_bdd(image_id):
+    """save the thumbnail link to the database by id"""
     conn=sqlite3.connect("images.db")
-    c=conn.cursor()
-    tab=[metadata,id]
-    c.execute("UPDATE images SET metadata= ? WHERE id = ?",tab)
+    my_cursor=conn.cursor()
+    link="/thumbnails/"+image_id+".jpg"
+    tab=[link,image_id]
+    my_cursor.execute("UPDATE images SET link = ? WHERE id = ?",tab)
     conn.commit()
     conn.close()
 
-def create_thumbnail(image,id):
+def save_metadata_to_bdd(metadata, image_id):
+    """save metadata into the database by id"""
+    conn=sqlite3.connect("images.db")
+    my_cursor=conn.cursor()
+    tab=[metadata,image_id]
+    my_cursor.execute("UPDATE images SET metadata= ? WHERE id = ?",tab)
+    conn.commit()
+    conn.close()
+
+def create_thumbnail(image,image_id):
+    """generate a thumbnail and save to the local thumbnails folder"""
     size = THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
-    im = Image.open(image).convert('RGB')
-    im.thumbnail(size)
-    im.save(os.path.join(app.config['THUMBNAIL_FOLDER'],id+".jpg"))
+    converted_image = Image.open(image).convert('RGB')
+    converted_image.thumbnail(size)
+    converted_image.save(os.path.join(app.config['THUMBNAIL_FOLDER'],image_id+".jpg"))
 
 def generate_metadata(image):
-    im = Image.open(image)
-    exifdata = im.getexif()
+    """get metadata of the image using Pillow"""
+    opened_image = Image.open(image)
+    exifdata = opened_image.getexif()
     metadata=""
     # iterating over all EXIF data fields
     for tag_id in exifdata:
         # get the tag name, instead of human unreadable tag id
         tag = TAGS.get(tag_id, tag_id)
         data = exifdata.get(tag_id)
-        # decode bytes 
+        # decode bytes
         if isinstance(data, bytes):
             data = data.decode()
         metadata+=f"{tag}: {data},"
