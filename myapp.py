@@ -7,7 +7,6 @@ from flask import Flask, jsonify, request, send_from_directory
 from PIL import Image
 from PIL.ExifTags import TAGS
 
-UPLOAD_FOLDER = "./uploads"
 THUMBNAIL_FOLDER = "./thumbnails"
 
 ALLOWED_EXTENSIONS = {"jpg"}
@@ -15,7 +14,6 @@ THUMBNAIL_WIDTH = 128
 THUMBNAIL_HEIGHT = 128
 
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["THUMBNAIL_FOLDER"] = THUMBNAIL_FOLDER
 
 
@@ -27,10 +25,13 @@ def upload_image():
     if request.files:
         image = request.files["image"]
         if image.filename != "" and allowed_file(image.filename):
+            # all checked, get metadata then save to the bdd
             metadata = generate_metadata(image)
             save_metadata_to_bdd(metadata, image_id)
+            # create thumbnail, save thumbnail and save link to bdd
             create_thumbnail(image, image_id)
             save_link_to_bdd(image_id)
+            # change state from pending to sucess
             change_state_in_bdd(image_id, "success")
         else:
             change_state_in_bdd(image_id, "failure")

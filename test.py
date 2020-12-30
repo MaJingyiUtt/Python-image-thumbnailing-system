@@ -33,7 +33,9 @@ class TestMethods(unittest.TestCase):
 
     def test_allowed_file(self):
         """Tests if the allowed_file function workes fine"""
+        # jpg is allowed
         self.assertTrue(myapp.allowed_file("filename.jpg"))
+        # png is not allowed
         self.assertFalse(myapp.allowed_file("filename.png"))
 
     def test_generate_id(self):
@@ -68,6 +70,7 @@ class TestMethods(unittest.TestCase):
         for obj in result:
             jsondata.append(obj)
         conn.close()
+        # check state is changed to success
         self.assertEqual(jsondata[0][1], "success")
         self.delete_line_in_bdd(image_id)
 
@@ -84,6 +87,7 @@ class TestMethods(unittest.TestCase):
         for obj in result:
             jsondata.append(obj)
         conn.close()
+        # check link
         self.assertEqual(jsondata[0][2], "/thumbnails/" + image_id + ".jpg")
         self.delete_line_in_bdd(image_id)
 
@@ -100,6 +104,7 @@ class TestMethods(unittest.TestCase):
         for obj in result:
             jsondata.append(obj)
         conn.close()
+        # check metadata
         self.assertEqual(jsondata[0][3], "metadata_for_test")
         self.delete_line_in_bdd(image_id)
 
@@ -114,6 +119,7 @@ class TestMethods(unittest.TestCase):
         width, height = image.size
         self.assertLessEqual(width, myapp.THUMBNAIL_WIDTH)
         self.assertLessEqual(height, myapp.THUMBNAIL_HEIGHT)
+        # remove the thumbnail created by this test
         if os.path.exists(image_path):
             os.remove(image_path)
 
