@@ -1,8 +1,10 @@
 """This module is for pytest of myapp.py"""
 import os
-import unittest
 import sqlite3
+import unittest
+
 from PIL import Image
+
 import myapp
 
 

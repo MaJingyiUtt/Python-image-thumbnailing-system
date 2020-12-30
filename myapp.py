@@ -1,11 +1,11 @@
 """This module is the principle module of this flask application """
 import os
-import uuid
 import sqlite3
-from flask import Flask, request, send_from_directory, jsonify
+import uuid
+
+from flask import Flask, jsonify, request, send_from_directory
 from PIL import Image
 from PIL.ExifTags import TAGS
-
 
 UPLOAD_FOLDER = "./uploads"
 THUMBNAIL_FOLDER = "./thumbnails"
